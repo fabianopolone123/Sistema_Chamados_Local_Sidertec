@@ -3,11 +3,17 @@ from __future__ import annotations
 import tkinter as tk
 from tkinter import messagebox, ttk
 
-from .config import get_database_path
+from .config import (
+    get_database_path,
+    get_update_check_interval_seconds,
+    get_update_manifest_path,
+)
 from .database import Database
 from .machine import machine_id, machine_name
 from .models import CATEGORIES, PRIORITIES
 from .tray import TrayController
+from .update_checker import UpdateChecker
+from .version import __version__
 
 
 class UserApp(tk.Tk):
@@ -23,13 +29,17 @@ class UserApp(tk.Tk):
         self.current_machine_id = machine_id()
         self.current_machine_name = machine_name()
         self.tray = TrayController(self, "Chamados Usuario", self._force_close)
+        self.update_checker = self._build_update_checker()
 
         self.requester_var = tk.StringVar()
         self.title_var = tk.StringVar()
         self.category_var = tk.StringVar(value=CATEGORIES[0])
         self.priority_var = tk.StringVar(value=PRIORITIES[1])
         self.status_var = tk.StringVar(
-            value=f"Maquina: {self.current_machine_name} ({self.current_machine_id})"
+            value=(
+                f"Maquina: {self.current_machine_name} ({self.current_machine_id}) | "
+                f"Versao: {__version__}"
+            )
         )
 
         self._build_ui()
@@ -37,6 +47,8 @@ class UserApp(tk.Tk):
         self.tray.start()
         self.refresh_tickets()
         self.after(15000, self._auto_refresh)
+        if self.update_checker is not None:
+            self.after(8000, self._auto_check_updates)
         if self.start_minimized:
             self.after(400, self._apply_start_mode)
 
@@ -98,6 +110,11 @@ class UserApp(tk.Tk):
         header.columnconfigure(0, weight=1)
         ttk.Label(header, textvariable=self.status_var).grid(row=0, column=0, sticky="w")
         ttk.Button(header, text="Atualizar", command=self.refresh_tickets).grid(row=0, column=1, sticky="e")
+        ttk.Button(
+            header,
+            text="Verificar atualizacao",
+            command=self.check_updates_manually,
+        ).grid(row=0, column=2, sticky="e", padx=(8, 0))
 
         columns = ("protocol", "status", "priority", "title", "updated_at")
         self.tree = ttk.Treeview(right, columns=columns, show="headings", height=12)
@@ -224,6 +241,65 @@ class UserApp(tk.Tk):
     def _auto_refresh(self) -> None:
         self.refresh_tickets()
         self.after(15000, self._auto_refresh)
+
+    def _build_update_checker(self) -> UpdateChecker | None:
+        manifest_path = get_update_manifest_path()
+        if manifest_path is None:
+            return None
+
+        interval = get_update_check_interval_seconds(default=1800)
+        return UpdateChecker(
+            current_version=__version__,
+            manifest_path=manifest_path,
+            interval_seconds=interval,
+        )
+
+    def _auto_check_updates(self) -> None:
+        self._check_updates(interactive=False)
+        if self.update_checker is not None:
+            self.after(self.update_checker.interval_seconds * 1000, self._auto_check_updates)
+
+    def check_updates_manually(self) -> None:
+        self._check_updates(interactive=True)
+
+    def _check_updates(self, interactive: bool) -> None:
+        if self.update_checker is None:
+            if interactive:
+                messagebox.showinfo(
+                    "Atualizacao",
+                    "Atualizacao automatica nao configurada.\n"
+                    "Defina 'update_manifest_path' no config.json.",
+                )
+            return
+
+        info = self.update_checker.get_available_update()
+        if info is None:
+            if interactive:
+                messagebox.showinfo("Atualizacao", "Voce ja esta na versao mais recente.")
+            return
+
+        if not interactive and not self.update_checker.should_prompt(info.latest_version):
+            return
+
+        details = (
+            f"Versao atual: {__version__}\n"
+            f"Nova versao: {info.latest_version}\n"
+            f"Instalador: {info.installer_path}\n"
+        )
+        if info.notes:
+            details += f"\nNotas:\n{info.notes}\n"
+        details += "\nDeseja abrir o instalador agora?"
+
+        should_update = messagebox.askyesno("Atualizacao disponivel", details)
+        if not should_update:
+            return
+
+        if not self.update_checker.run_installer(info.installer_path):
+            messagebox.showerror(
+                "Atualizacao",
+                "Nao foi possivel abrir o instalador.\n"
+                "Verifique se o arquivo existe e se voce tem permissao de acesso.",
+            )
 
     def _on_close_request(self) -> None:
         if self._is_closing:

@@ -9,7 +9,9 @@ AppId={{FC8E7D2A-CC7A-4DB6-9A53-613C12EB4C11}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
-DefaultDirName={autopf}\SistemaChamados\Usuario
+DefaultDirName={localappdata}\SistemaChamados\Usuario
+PrivilegesRequired=lowest
+PrivilegesRequiredOverridesAllowed=dialog
 DisableProgramGroupPage=yes
 OutputDir=..\dist_installers
 OutputBaseFilename=ChamadosUsuarioSetup
@@ -31,7 +33,7 @@ Source: "..\config.example.json"; DestDir: "{app}"; DestName: "config.json"; Fla
 [Icons]
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-Name: "{commonstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Parameters: "--minimized-to-tray"; Tasks: autostart
+Name: "{userstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Parameters: "--minimized-to-tray"; Tasks: autostart
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Parameters: "--minimized-to-tray"; Description: "Executar {#MyAppName}"; Flags: nowait postinstall skipifsilent
