@@ -11,30 +11,21 @@ from .config import (
 from .database import Database
 from .machine import machine_id, machine_name
 from .models import CATEGORIES, PRIORITIES
-from .tray import TrayController
 from .update_checker import UpdateChecker
 from .version import __version__
 
 
 class UserApp(tk.Tk):
-    def __init__(self, start_minimized: bool = False) -> None:
+    def __init__(self) -> None:
         super().__init__()
         self.title("Chamados Usuario")
-        self.geometry("1140x700")
-        self.minsize(980, 620)
-        self.start_minimized = start_minimized
-        self._is_closing = False
+        self.geometry("980x640")
+        self.minsize(860, 560)
 
         self.db = Database(get_database_path())
         self.current_machine_id = machine_id()
         self.current_machine_name = machine_name()
-        self.tray = TrayController(self, "Chamados Usuario", self._force_close)
         self.update_checker = self._build_update_checker()
-
-        self.requester_var = tk.StringVar()
-        self.title_var = tk.StringVar()
-        self.category_var = tk.StringVar(value=CATEGORIES[0])
-        self.priority_var = tk.StringVar(value=PRIORITIES[1])
         self.status_var = tk.StringVar(
             value=(
                 f"Maquina: {self.current_machine_name} ({self.current_machine_id}) | "
@@ -43,141 +34,147 @@ class UserApp(tk.Tk):
         )
 
         self._build_ui()
-        self.protocol("WM_DELETE_WINDOW", self._on_close_request)
-        self.tray.start()
+        self.protocol("WM_DELETE_WINDOW", self.destroy)
         self.refresh_tickets()
         self.after(15000, self._auto_refresh)
         if self.update_checker is not None:
             self.after(8000, self._auto_check_updates)
-        if self.start_minimized:
-            self.after(400, self._apply_start_mode)
 
     def _build_ui(self) -> None:
-        root = ttk.Frame(self, padding=14)
+        root = ttk.Frame(self, padding=12)
         root.pack(fill="both", expand=True)
-        root.columnconfigure(0, weight=3)
-        root.columnconfigure(1, weight=5)
-        root.rowconfigure(0, weight=1)
+        root.rowconfigure(1, weight=1)
+        root.rowconfigure(2, weight=1)
+        root.columnconfigure(0, weight=1)
 
-        left = ttk.LabelFrame(root, text="Novo chamado", padding=12)
-        left.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
-
-        ttk.Label(left, text="Solicitante (opcional)").grid(row=0, column=0, sticky="w")
-        ttk.Entry(left, textvariable=self.requester_var).grid(
-            row=1, column=0, sticky="ew", pady=(2, 8)
+        header = ttk.Frame(root)
+        header.grid(row=0, column=0, sticky="ew", pady=(0, 8))
+        header.columnconfigure(0, weight=1)
+        ttk.Label(header, textvariable=self.status_var).grid(row=0, column=0, sticky="w")
+        ttk.Button(header, text="Abrir novo chamado", command=self.open_new_ticket_window).grid(
+            row=0, column=1, sticky="e", padx=(8, 0)
+        )
+        ttk.Button(header, text="Verificar atualizacao", command=self.check_updates_manually).grid(
+            row=0, column=2, sticky="e", padx=(8, 0)
         )
 
-        ttk.Label(left, text="Titulo").grid(row=2, column=0, sticky="w")
-        ttk.Entry(left, textvariable=self.title_var).grid(row=3, column=0, sticky="ew", pady=(2, 8))
+        list_frame = ttk.LabelFrame(root, text="Meus chamados (por maquina)", padding=10)
+        list_frame.grid(row=1, column=0, sticky="nsew")
+        list_frame.columnconfigure(0, weight=1)
+        list_frame.rowconfigure(0, weight=1)
 
-        selectors = ttk.Frame(left)
-        selectors.grid(row=4, column=0, sticky="ew", pady=(0, 8))
+        columns = ("protocol", "status", "priority", "title", "updated_at")
+        self.tree = ttk.Treeview(list_frame, columns=columns, show="headings")
+        self.tree.heading("protocol", text="Protocolo")
+        self.tree.heading("status", text="Status")
+        self.tree.heading("priority", text="Prioridade")
+        self.tree.heading("title", text="Titulo")
+        self.tree.heading("updated_at", text="Atualizado em")
+        self.tree.column("protocol", width=135, anchor="w")
+        self.tree.column("status", width=150, anchor="center")
+        self.tree.column("priority", width=100, anchor="center")
+        self.tree.column("title", width=420, anchor="w")
+        self.tree.column("updated_at", width=170, anchor="center")
+        self.tree.grid(row=0, column=0, sticky="nsew")
+        self.tree.bind("<<TreeviewSelect>>", self.on_tree_select)
+
+        scroll = ttk.Scrollbar(list_frame, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=scroll.set)
+        scroll.grid(row=0, column=1, sticky="ns")
+
+        details_frame = ttk.LabelFrame(root, text="Detalhes", padding=10)
+        details_frame.grid(row=2, column=0, sticky="nsew", pady=(8, 0))
+        details_frame.rowconfigure(0, weight=1)
+        details_frame.columnconfigure(0, weight=1)
+
+        self.details = tk.Text(details_frame, height=12, wrap="word", state="disabled")
+        self.details.grid(row=0, column=0, sticky="nsew")
+
+    def open_new_ticket_window(self) -> None:
+        dialog = tk.Toplevel(self)
+        dialog.title("Novo chamado")
+        dialog.geometry("560x470")
+        dialog.minsize(520, 430)
+        dialog.transient(self)
+        dialog.grab_set()
+
+        title_var = tk.StringVar()
+        category_var = tk.StringVar(value=CATEGORIES[0])
+        priority_var = tk.StringVar(value=PRIORITIES[1])
+
+        form = ttk.Frame(dialog, padding=12)
+        form.pack(fill="both", expand=True)
+        form.columnconfigure(0, weight=1)
+        form.rowconfigure(4, weight=1)
+
+        ttk.Label(form, text="Titulo").grid(row=0, column=0, sticky="w")
+        ttk.Entry(form, textvariable=title_var).grid(row=1, column=0, sticky="ew", pady=(2, 8))
+
+        selectors = ttk.Frame(form)
+        selectors.grid(row=2, column=0, sticky="ew", pady=(0, 8))
         selectors.columnconfigure(0, weight=1)
         selectors.columnconfigure(1, weight=1)
 
         ttk.Label(selectors, text="Categoria").grid(row=0, column=0, sticky="w")
         ttk.Label(selectors, text="Prioridade").grid(row=0, column=1, sticky="w")
         ttk.Combobox(
-            selectors, textvariable=self.category_var, values=CATEGORIES, state="readonly"
+            selectors, textvariable=category_var, values=CATEGORIES, state="readonly"
         ).grid(row=1, column=0, sticky="ew", padx=(0, 6))
         ttk.Combobox(
-            selectors, textvariable=self.priority_var, values=PRIORITIES, state="readonly"
+            selectors, textvariable=priority_var, values=PRIORITIES, state="readonly"
         ).grid(row=1, column=1, sticky="ew")
 
-        ttk.Label(left, text="Descricao").grid(row=5, column=0, sticky="w")
-        self.description_text = tk.Text(left, height=11, wrap="word")
-        self.description_text.grid(row=6, column=0, sticky="nsew", pady=(2, 10))
-        left.rowconfigure(6, weight=1)
-        left.columnconfigure(0, weight=1)
+        ttk.Label(form, text="Descricao").grid(row=3, column=0, sticky="w")
+        description_text = tk.Text(form, height=12, wrap="word")
+        description_text.grid(row=4, column=0, sticky="nsew", pady=(2, 10))
 
-        actions = ttk.Frame(left)
-        actions.grid(row=7, column=0, sticky="ew")
-        actions.columnconfigure(0, weight=1)
-        actions.columnconfigure(1, weight=1)
-        ttk.Button(actions, text="Abrir chamado", command=self.submit_ticket).grid(
-            row=0, column=0, sticky="ew", padx=(0, 6)
-        )
-        ttk.Button(actions, text="Limpar", command=self.clear_form).grid(row=0, column=1, sticky="ew")
+        actions = ttk.Frame(form)
+        actions.grid(row=5, column=0, sticky="e")
 
-        right = ttk.LabelFrame(root, text="Meus chamados (por maquina)", padding=12)
-        right.grid(row=0, column=1, sticky="nsew")
-        right.rowconfigure(1, weight=1)
-        right.rowconfigure(2, weight=1)
-        right.columnconfigure(0, weight=1)
+        def save_ticket() -> None:
+            title = title_var.get().strip()
+            desc = description_text.get("1.0", tk.END).strip()
+            category = category_var.get().strip()
+            priority = priority_var.get().strip()
 
-        header = ttk.Frame(right)
-        header.grid(row=0, column=0, sticky="ew", pady=(0, 8))
-        header.columnconfigure(0, weight=1)
-        ttk.Label(header, textvariable=self.status_var).grid(row=0, column=0, sticky="w")
-        ttk.Button(header, text="Atualizar", command=self.refresh_tickets).grid(row=0, column=1, sticky="e")
-        ttk.Button(
-            header,
-            text="Verificar atualizacao",
-            command=self.check_updates_manually,
-        ).grid(row=0, column=2, sticky="e", padx=(8, 0))
+            if not title:
+                messagebox.showwarning("Validacao", "Informe um titulo para o chamado.", parent=dialog)
+                return
+            if len(desc) < 10:
+                messagebox.showwarning(
+                    "Validacao",
+                    "A descricao deve ter pelo menos 10 caracteres.",
+                    parent=dialog,
+                )
+                return
 
-        columns = ("protocol", "status", "priority", "title", "updated_at")
-        self.tree = ttk.Treeview(right, columns=columns, show="headings", height=12)
-        self.tree.heading("protocol", text="Protocolo")
-        self.tree.heading("status", text="Status")
-        self.tree.heading("priority", text="Prioridade")
-        self.tree.heading("title", text="Titulo")
-        self.tree.heading("updated_at", text="Atualizado em")
+            try:
+                protocol = self.db.create_ticket(
+                    requester_name="",
+                    machine_name=self.current_machine_name,
+                    machine_id=self.current_machine_id,
+                    title=title,
+                    description=desc,
+                    category=category,
+                    priority=priority,
+                )
+            except Exception as exc:
+                messagebox.showerror("Erro", f"Falha ao abrir chamado.\n{exc}", parent=dialog)
+                return
 
-        self.tree.column("protocol", width=130, anchor="w")
-        self.tree.column("status", width=145, anchor="center")
-        self.tree.column("priority", width=95, anchor="center")
-        self.tree.column("title", width=290, anchor="w")
-        self.tree.column("updated_at", width=150, anchor="center")
-        self.tree.grid(row=1, column=0, sticky="nsew")
-        self.tree.bind("<<TreeviewSelect>>", self.on_tree_select)
+            dialog.destroy()
+            self.refresh_tickets()
+            messagebox.showinfo("Sucesso", f"Chamado aberto com protocolo {protocol}.")
 
-        scroll = ttk.Scrollbar(right, orient="vertical", command=self.tree.yview)
-        self.tree.configure(yscrollcommand=scroll.set)
-        scroll.grid(row=1, column=1, sticky="ns")
-
-        self.details = tk.Text(right, height=11, wrap="word", state="disabled")
-        self.details.grid(row=2, column=0, sticky="nsew", pady=(10, 0))
-
-    def clear_form(self) -> None:
-        self.title_var.set("")
-        self.description_text.delete("1.0", tk.END)
-        self.category_var.set(CATEGORIES[0])
-        self.priority_var.set(PRIORITIES[1])
-
-    def submit_ticket(self) -> None:
-        title = self.title_var.get().strip()
-        desc = self.description_text.get("1.0", tk.END).strip()
-        requester = self.requester_var.get().strip()
-        category = self.category_var.get().strip()
-        priority = self.priority_var.get().strip()
-
-        if not title:
-            messagebox.showwarning("Validacao", "Informe um titulo para o chamado.")
-            return
-        if len(desc) < 10:
-            messagebox.showwarning("Validacao", "A descricao deve ter pelo menos 10 caracteres.")
-            return
-
-        try:
-            protocol = self.db.create_ticket(
-                requester_name=requester,
-                machine_name=self.current_machine_name,
-                machine_id=self.current_machine_id,
-                title=title,
-                description=desc,
-                category=category,
-                priority=priority,
-            )
-        except Exception as exc:
-            messagebox.showerror("Erro", f"Falha ao abrir chamado.\n{exc}")
-            return
-
-        self.clear_form()
-        self.refresh_tickets()
-        messagebox.showinfo("Sucesso", f"Chamado aberto com protocolo {protocol}.")
+        ttk.Button(actions, text="Cancelar", command=dialog.destroy).grid(row=0, column=0, padx=(0, 8))
+        ttk.Button(actions, text="Abrir chamado", command=save_ticket).grid(row=0, column=1)
 
     def refresh_tickets(self) -> None:
+        selected = self.tree.selection()
+        selected_protocol = ""
+        if selected:
+            selected_protocol = self.tree.item(selected[0], "values")[0]
+
         try:
             rows = self.db.list_tickets_by_machine(self.current_machine_id)
         except Exception as exc:
@@ -187,8 +184,9 @@ class UserApp(tk.Tk):
         for item in self.tree.get_children():
             self.tree.delete(item)
 
+        selected_item = None
         for row in rows:
-            self.tree.insert(
+            item = self.tree.insert(
                 "",
                 tk.END,
                 values=(
@@ -199,15 +197,32 @@ class UserApp(tk.Tk):
                     row["updated_at"],
                 ),
             )
+            if row["protocol"] == selected_protocol:
+                selected_item = item
 
-    def on_tree_select(self, _event: object) -> None:
+        if selected_item:
+            self.tree.selection_set(selected_item)
+            self.tree.focus(selected_item)
+            self.on_tree_select(None)
+        elif rows:
+            first_item = self.tree.get_children()[0]
+            self.tree.selection_set(first_item)
+            self.tree.focus(first_item)
+            self.on_tree_select(None)
+        else:
+            self._set_details("Nenhum chamado encontrado para esta maquina.")
+
+    def on_tree_select(self, _event: object | None) -> None:
         selected = self.tree.selection()
         if not selected:
+            self._set_details("Selecione um chamado para ver os detalhes.")
             return
+
         protocol = self.tree.item(selected[0], "values")[0]
         ticket = self.db.get_ticket(protocol)
         events = self.db.list_events(protocol, limit=8)
         if ticket is None:
+            self._set_details("Chamado nao encontrado.")
             return
 
         lines = [
@@ -218,7 +233,6 @@ class UserApp(tk.Tk):
             f"Aberto em: {ticket['created_at']}",
             f"Atualizado em: {ticket['updated_at']}",
             f"Encerrado em: {ticket['closed_at'] or '-'}",
-            f"Solicitante: {ticket['requester_name'] or '-'}",
             f"Maquina: {ticket['machine_name']} ({ticket['machine_id']})",
             "",
             f"Titulo: {ticket['title']}",
@@ -229,13 +243,13 @@ class UserApp(tk.Tk):
             "Ultimos eventos:",
         ]
         for evt in events:
-            lines.append(
-                f"- {evt['created_at']} | {evt['event_type']} | {evt['event_desc']}"
-            )
+            lines.append(f"- {evt['created_at']} | {evt['event_type']} | {evt['event_desc']}")
+        self._set_details("\n".join(lines))
 
+    def _set_details(self, value: str) -> None:
         self.details.configure(state="normal")
         self.details.delete("1.0", tk.END)
-        self.details.insert("1.0", "\n".join(lines))
+        self.details.insert("1.0", value)
         self.details.configure(state="disabled")
 
     def _auto_refresh(self) -> None:
@@ -301,33 +315,9 @@ class UserApp(tk.Tk):
                 "Verifique se o arquivo existe e se voce tem permissao de acesso.",
             )
 
-    def _on_close_request(self) -> None:
-        if self._is_closing:
-            self.destroy()
-            return
 
-        if self.tray.available:
-            self.tray.hide_window()
-            return
-
-        self._force_close()
-
-    def _force_close(self) -> None:
-        if self._is_closing:
-            return
-        self._is_closing = True
-        self.tray.stop()
-        self.destroy()
-
-    def _apply_start_mode(self) -> None:
-        if self.tray.available:
-            self.tray.hide_window()
-            return
-        self.iconify()
-
-
-def main(start_minimized: bool = False) -> None:
-    app = UserApp(start_minimized=start_minimized)
+def main() -> None:
+    app = UserApp()
     app.mainloop()
 
 

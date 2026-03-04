@@ -1,5 +1,5 @@
 {
-  "latest_version": "1.0.2",
+  "latest_version": "1.0.3",
   "installer_path": "\\\\SERVIDOR\\Chamados\\instaladores\\ChamadosUsuarioSetup.exe",
-  "notes": "Correcao no uso de banco compartilhado e melhorias de versionamento para atualizacao."
+  "notes": "Interface do usuario simplificada, sem bandeja do sistema e com instancia unica por maquina."
 }

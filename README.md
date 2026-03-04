@@ -53,7 +53,9 @@ Variaveis de ambiente opcionais:
 ## Instalador do Usuario sem admin
 
 O instalador do `Chamados Usuario` foi configurado para instalacao por usuario (`AppData`),
-com inicio automatico no Windows e execucao minimizada na bandeja.
+com inicio automatico no Windows.
+
+O app de Usuario permite apenas uma instancia por maquina.
 
 Na primeira instalacao em uma maquina limpa, nao deve pedir senha de administrador.
 

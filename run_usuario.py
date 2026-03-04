@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import argparse
 import sys
 from pathlib import Path
 
@@ -10,17 +9,8 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
+from chamados.single_instance import SingleInstanceError, acquire_single_instance
 from chamados.user_app import main
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(prog="ChamadosUsuario")
-    parser.add_argument(
-        "--minimized-to-tray",
-        action="store_true",
-        help="Inicia minimizado na bandeja do sistema.",
-    )
-    return parser.parse_args()
 
 
 def show_startup_error(message: str) -> None:
@@ -37,9 +27,16 @@ def show_startup_error(message: str) -> None:
 
 
 if __name__ == "__main__":
-    args = parse_args()
+    lock = None
     try:
-        main(start_minimized=args.minimized_to_tray)
+        lock = acquire_single_instance()
+        main()
+    except SingleInstanceError:
+        show_startup_error("O Chamados Usuario ja esta aberto nesta maquina.")
+        raise SystemExit(0)
     except Exception as exc:
         show_startup_error(str(exc))
         raise SystemExit(1)
+    finally:
+        if lock is not None:
+            lock.release()
