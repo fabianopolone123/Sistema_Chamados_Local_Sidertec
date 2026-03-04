@@ -28,7 +28,7 @@ Name: "autostart"; Description: "Iniciar com o Windows"; GroupDescription: "Inic
 
 [Files]
 Source: "{#MyBuildDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "..\config.example.json"; DestDir: "{app}"; DestName: "config.json"; Flags: onlyifdoesntexist
+Source: "..\config.example.json"; DestDir: "{app}"; DestName: "config.json"; Flags: ignoreversion
 
 [Icons]
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon

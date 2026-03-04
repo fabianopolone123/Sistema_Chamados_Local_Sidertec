@@ -54,19 +54,12 @@ def _as_int(value: Any, default: int) -> int:
         return default
 
 
-def get_runtime_path() -> Path:
-    return _runtime_dir()
+def _is_placeholder_database_path(path: Path) -> bool:
+    value = str(path).replace("/", "\\").strip().lower()
+    return value.startswith("\\\\servidor\\")
 
 
-def get_database_path() -> Path:
-    env_path = os.getenv("CHAMADOS_DB_PATH")
-    if env_path:
-        return Path(env_path).expanduser()
-
-    runtime_db = _read_config_value("database_path")
-    if runtime_db:
-        return Path(runtime_db).expanduser()
-
+def _default_database_path() -> Path:
     default_path = _program_data_dir() / "chamados.db"
     try:
         default_path.parent.mkdir(parents=True, exist_ok=True)
@@ -74,6 +67,28 @@ def get_database_path() -> Path:
         # Se houver restricao de pasta local, o erro final sera tratado na abertura do banco.
         pass
     return default_path
+
+
+def get_runtime_path() -> Path:
+    return _runtime_dir()
+
+
+def get_database_path() -> Path:
+    env_path = os.getenv("CHAMADOS_DB_PATH")
+    if env_path:
+        path = Path(env_path).expanduser()
+        if _is_placeholder_database_path(path):
+            return _default_database_path()
+        return path
+
+    runtime_db = _read_config_value("database_path")
+    if runtime_db:
+        path = Path(runtime_db).expanduser()
+        if _is_placeholder_database_path(path):
+            return _default_database_path()
+        return path
+
+    return _default_database_path()
 
 
 def get_update_manifest_path() -> Path | None:
