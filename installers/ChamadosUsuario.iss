@@ -1,5 +1,7 @@
 ﻿#define MyAppName "Chamados Usuario"
-#define MyAppVersion "1.0.1"
+#ifndef MyAppVersion
+#define MyAppVersion "1.0.2"
+#endif
 #define MyAppPublisher "TI Local"
 #define MyAppExeName "ChamadosUsuario.exe"
 #define MyBuildDir "..\dist\ChamadosUsuario"
@@ -37,3 +39,4 @@ Name: "{userstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Parameter
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Parameters: "--minimized-to-tray"; Description: "Executar {#MyAppName}"; Flags: nowait postinstall skipifsilent
+

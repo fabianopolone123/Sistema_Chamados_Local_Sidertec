@@ -83,6 +83,9 @@ Saida esperada:
 .\scripts\create_installers.ps1
 ```
 
+Observacao: a versao do instalador de Usuario e lida automaticamente de
+`src\chamados\version.py` durante a geracao.
+
 Saida esperada:
 
 - `dist_installers\ChamadosUsuarioSetup.exe`
