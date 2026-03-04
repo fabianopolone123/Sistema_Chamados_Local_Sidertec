@@ -20,8 +20,8 @@ Sistema desktop local, sem web, com duas interfaces:
 ## Configuracao do banco
 
 1. Copie `config.example.json` para `config.json`.
-2. Defina `database_path` com um caminho local ou de rede, por exemplo:
-   - `C:\\Dados\\Chamados\\chamados.db`
+2. Defina `database_path` com um caminho compartilhado usado por todos, por exemplo:
+   - `S:\\Comum\\TI\\Agents\\chamados.db`
    - `\\\\SERVIDOR\\Chamados\\chamados.db`
 
 Tambem e possivel sobrescrever via variavel de ambiente:

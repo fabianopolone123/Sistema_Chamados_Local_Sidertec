@@ -25,7 +25,7 @@ Name: "desktopicon"; Description: "Criar atalho na area de trabalho"; GroupDescr
 
 [Files]
 Source: "{#MyBuildDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "..\config.example.json"; DestDir: "{app}"; DestName: "config.json"; Flags: onlyifdoesntexist
+Source: "..\config.example.json"; DestDir: "{app}"; DestName: "config.json"; Flags: ignoreversion
 
 [Icons]
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
