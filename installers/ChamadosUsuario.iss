@@ -1,5 +1,5 @@
-#define MyAppName "Chamados Usuario"
-#define MyAppVersion "1.0.0"
+﻿#define MyAppName "Chamados Usuario"
+#define MyAppVersion "1.0.1"
 #define MyAppPublisher "TI Local"
 #define MyAppExeName "ChamadosUsuario.exe"
 #define MyBuildDir "..\dist\ChamadosUsuario"
