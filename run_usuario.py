@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -12,6 +13,16 @@ if str(SRC) not in sys.path:
 from chamados.user_app import main
 
 
-if __name__ == "__main__":
-    main()
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(prog="ChamadosUsuario")
+    parser.add_argument(
+        "--minimized-to-tray",
+        action="store_true",
+        help="Inicia minimizado na bandeja do sistema.",
+    )
+    return parser.parse_args()
 
+
+if __name__ == "__main__":
+    args = parse_args()
+    main(start_minimized=args.minimized_to_tray)

@@ -22,6 +22,7 @@ Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortugue
 
 [Tasks]
 Name: "desktopicon"; Description: "Criar atalho na area de trabalho"; GroupDescription: "Atalhos:"
+Name: "autostart"; Description: "Iniciar com o Windows"; GroupDescription: "Inicializacao:"
 
 [Files]
 Source: "{#MyBuildDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -30,6 +31,7 @@ Source: "..\config.example.json"; DestDir: "{app}"; DestName: "config.json"; Fla
 [Icons]
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+Name: "{commonstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Parameters: "--minimized-to-tray"; Tasks: autostart
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "Executar {#MyAppName}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; Parameters: "--minimized-to-tray"; Description: "Executar {#MyAppName}"; Flags: nowait postinstall skipifsilent

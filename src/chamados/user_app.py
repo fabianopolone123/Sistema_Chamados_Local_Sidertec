@@ -7,18 +7,22 @@ from .config import get_database_path
 from .database import Database
 from .machine import machine_id, machine_name
 from .models import CATEGORIES, PRIORITIES
+from .tray import TrayController
 
 
 class UserApp(tk.Tk):
-    def __init__(self) -> None:
+    def __init__(self, start_minimized: bool = False) -> None:
         super().__init__()
         self.title("Chamados Usuario")
         self.geometry("1140x700")
         self.minsize(980, 620)
+        self.start_minimized = start_minimized
+        self._is_closing = False
 
         self.db = Database(get_database_path())
         self.current_machine_id = machine_id()
         self.current_machine_name = machine_name()
+        self.tray = TrayController(self, "Chamados Usuario", self._force_close)
 
         self.requester_var = tk.StringVar()
         self.title_var = tk.StringVar()
@@ -29,8 +33,12 @@ class UserApp(tk.Tk):
         )
 
         self._build_ui()
+        self.protocol("WM_DELETE_WINDOW", self._on_close_request)
+        self.tray.start()
         self.refresh_tickets()
         self.after(15000, self._auto_refresh)
+        if self.start_minimized:
+            self.after(400, self._apply_start_mode)
 
     def _build_ui(self) -> None:
         root = ttk.Frame(self, padding=14)
@@ -217,9 +225,33 @@ class UserApp(tk.Tk):
         self.refresh_tickets()
         self.after(15000, self._auto_refresh)
 
+    def _on_close_request(self) -> None:
+        if self._is_closing:
+            self.destroy()
+            return
 
-def main() -> None:
-    app = UserApp()
+        if self.tray.available:
+            self.tray.hide_window()
+            return
+
+        self._force_close()
+
+    def _force_close(self) -> None:
+        if self._is_closing:
+            return
+        self._is_closing = True
+        self.tray.stop()
+        self.destroy()
+
+    def _apply_start_mode(self) -> None:
+        if self.tray.available:
+            self.tray.hide_window()
+            return
+        self.iconify()
+
+
+def main(start_minimized: bool = False) -> None:
+    app = UserApp(start_minimized=start_minimized)
     app.mainloop()
 
 
