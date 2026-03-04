@@ -1,6 +1,6 @@
 ﻿#define MyAppName "Chamados Usuario"
 #ifndef MyAppVersion
-#define MyAppVersion "1.0.2"
+#define MyAppVersion "1.0.3"
 #endif
 #define MyAppPublisher "TI Local"
 #define MyAppExeName "ChamadosUsuario.exe"
