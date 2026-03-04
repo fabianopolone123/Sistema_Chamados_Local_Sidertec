@@ -16,17 +16,34 @@ def now_str() -> str:
 class Database:
     def __init__(self, db_path: Path):
         self.db_path = Path(db_path)
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._ensure_parent_dir()
         self._init_schema()
 
     def _connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path, timeout=30)
+        try:
+            conn = sqlite3.connect(self.db_path, timeout=30)
+        except sqlite3.Error as exc:
+            raise RuntimeError(
+                "Nao foi possivel abrir o banco de dados.\n"
+                f"Caminho: {self.db_path}\n"
+                "Verifique se o caminho existe e se voce tem permissao."
+            ) from exc
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA journal_mode = WAL;")
         conn.execute("PRAGMA synchronous = NORMAL;")
         conn.execute("PRAGMA foreign_keys = ON;")
         conn.execute("PRAGMA busy_timeout = 30000;")
         return conn
+
+    def _ensure_parent_dir(self) -> None:
+        try:
+            self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            raise RuntimeError(
+                "Nao foi possivel acessar a pasta do banco de dados.\n"
+                f"Pasta: {self.db_path.parent}\n"
+                "Se for pasta de rede, confirme servidor, compartilhamento e permissao."
+            ) from exc
 
     def _init_schema(self) -> None:
         with self._connect() as conn:
@@ -280,4 +297,3 @@ class Database:
         result = {row["status"]: row["qty"] for row in rows}
         result["TOTAL"] = sum(result.values())
         return result
-
