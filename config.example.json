@@ -1,5 +1,5 @@
 {
-  "database_path": "\\\\SERVIDOR\\Chamados\\chamados.db",
+  "database_path": "C:\\ProgramData\\SistemaChamados\\chamados.db",
   "update_manifest_path": "\\\\SERVIDOR\\Chamados\\updates\\usuario_update.json",
   "update_check_interval_seconds": 1800
 }
